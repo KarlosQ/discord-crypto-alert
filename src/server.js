@@ -2,7 +2,7 @@ const EventEmitter = require('events')
 const { getIp, getHms, parsePairsFromWsRequest, groupTrades, ago } = require('./helper')
 
 function getIcon(side) {
-  side === 'sell' ? '🔻' : '🔝'
+  return side === 'sell' ? '🔻' : '⬆️'
 }
 
 function isValidNumber(n) {
@@ -479,7 +479,7 @@ class Server extends EventEmitter {
         if (this.isImportantAccumulated(this.accumulatedBuyAmount)) {
           this.channel.send(`
 
-            🔝 Compra acumulada en ${msToSeconds(this.accumulatedTime)} 🔝
+            ⬆️ Compra acumulada en ${msToSeconds(this.accumulatedTime)} ⬆️
             par: BTC/USD
             cantidad: ${formatAmountToMillons(this.accumulatedBuyAmount)}
           `)
