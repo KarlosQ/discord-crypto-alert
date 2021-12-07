@@ -26,6 +26,20 @@ function amountToMillons(amount) {
   return Math.round(amount * 1000000)
 }
 
+function commandWithNumber(msg) {
+  const text = msg.content.split(' ')[1]
+  if (isValidNumber(text)) {
+    const amount = parseInt(text, 10)
+    if (amount < 1) {
+      msg.reply('Cantidad insignificante, almenos 1')
+    } else {
+      return amount
+    }
+  } else {
+    msg.reply('Valor no válido. Usar solo números')
+  }
+}
+
 class Server extends EventEmitter {
   constructor(options, exchanges, discord) {
     super()
@@ -154,50 +168,32 @@ class Server extends EventEmitter {
       }
 
       if (msg.content.startsWith('!acumulado')) {
-        const text = msg.content.split(' ')[1]
-        if (isValidNumber(text)) {
-          const amount = parseInt(text, 10)
-          if (amount < 1) {
-            msg.reply('Cantidad insignificante, almenos 1')
-          } else {
-            this.accumulatedLimit = amountToMillons(amount)
-          }
-        } else {
-          msg.reply('Valor no válido. Usar solo números')
+        const amount = commandWithNumber(msg)
+        if (amount) {
+          this.accumulatedLimit = amountToMillons(amount)
+          msg.reply(`Acumulado cambiado a ${amount} millon`)
         }
       }
 
       if (msg.content.startsWith('!tiempo-acumulado')) {
-        const text = msg.content.split(' ')[1]
-        if (isValidNumber(text)) {
-          const amount = parseInt(text, 10)
-          if (amount < 1) {
-            msg.reply('Cantidad insignificante, almenos 1')
-          } else {
-            this.accumulatedTime = secondsToMs(amount)
-          }
-        } else {
-          msg.reply('Valor no válido. Usar solo números')
+        const amount = commandWithNumber(msg)
+        if (amount) {
+          this.accumulatedTime = secondsToMs(amount)
+          msg.reply(`tiempo acumulado cambiado a ${amount} segundo`)
         }
       }
 
       if (msg.content.startsWith('!transaccion')) {
-        const text = msg.content.split(' ')[1]
-        if (isValidNumber(text)) {
-          const amount = parseInt(text, 10)
-          if (amount < 1) {
-            msg.reply('Cantidad insignificante, almenos 1')
-          } else {
-            this.bigDealLimit = amountToMillons(amount)
-          }
-        } else {
-          msg.reply('Valor no válido. Usar solo números')
+        const amount = commandWithNumber(msg)
+        if (amount) {
+          this.bigDealLimit = amountToMillons(amount)
+          msg.reply(`transaccion importante cambiada a ${amount} millon`)
         }
       }
     })
 
     this.channel.send(`
-    
+
       Crypto tracking bot iniciado. Valores por defecto:
       tiempo-acumulado: ${msToSeconds(this.accumulatedTime)}
       acumulado: ${formatAmountToMillons(this.accumulatedLimit)}
