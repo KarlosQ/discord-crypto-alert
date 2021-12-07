@@ -1,10 +1,5 @@
 const EventEmitter = require('events')
-const WebSocket = require('ws')
-const fs = require('fs')
 const { getIp, getHms, parsePairsFromWsRequest, groupTrades, ago } = require('./helper')
-const express = require('express')
-const path = require('path')
-const rateLimit = require('express-rate-limit')
 
 function isValidNumber(n) {
   return n && Number(n) && Number(n) % 1 === 0
@@ -89,6 +84,7 @@ class Server extends EventEmitter {
     this.BANNED_IPS = []
 
     if (this.options.collect) {
+      console.log('L----O-----L')
       /*       console.log(
         `\n[server] collect is enabled`,
         this.options.broadcast && this.options.broadcastAggr
@@ -108,40 +104,6 @@ class Server extends EventEmitter {
       // profile exchanges connections (keep alive)
       this._activityMonitoringInterval = setInterval(this.monitorExchangesActivity.bind(this, +new Date()), this.options.monitorInterval)
     }
-
-    this.initStorages().then(() => {
-      if (this.options.collect) {
-        if (this.storages) {
-          const delay = this.scheduleNextBackup()
-
-          /*        console.log(
-            `[server] scheduling first save to ${this.storages.map((storage) => storage.constructor.name)} in ${getHms(delay)}...`
-          ) */
-        }
-      }
-
-      if (this.options.api || this.options.broadcast) {
-        if (!this.options.port) {
-          console.error(
-            `\n[server] critical error occured\n\t-> setting a network port is mandatory for API or broadcasting (value is ${this.options.port})\n\n`
-          )
-          process.exit()
-        }
-
-        this.createHTTPServer()
-      }
-
-      if (this.options.broadcast) {
-        this.createWSServer()
-
-        if (this.options.broadcastAggr) {
-          this._broadcastAggregatedTradesInterval = setInterval(this.broadcastAggregatedTrades.bind(this), 50)
-        }
-      }
-
-      // update banned ip
-      this.listenBannedIps()
-    })
 
     //DISCORD
     discord.on('message', (msg) => {
@@ -213,96 +175,6 @@ class Server extends EventEmitter {
     return false
   }
 
-  initStorages() {
-    if (!this.options.storage) {
-      return Promise.resolve()
-    }
-
-    this.storages = []
-
-    const promises = []
-
-    for (let name of this.options.storage) {
-      console.log(`[storage] Using "${name}" storage solution`)
-
-      if (this.options.api && this.options.storage.length > 1 && !this.options.storage.indexOf(name)) {
-        console.log(`[storage] Set "${name}" as primary storage for API`)
-      }
-
-      let storage = new (require(`./storage/${name}`))(this.options)
-
-      if (typeof storage.connect === 'function') {
-        promises.push(storage.connect())
-      } else {
-        promises.push(Promise.resolve())
-      }
-
-      this.storages.push(storage)
-    }
-
-    console.log(`[storage] all storage ready`)
-
-    return Promise.all(promises)
-  }
-
-  backupTrades(exitBackup) {
-    return
-
-    if (exitBackup) {
-      clearTimeout(this.backupTimeout)
-    } else if (!this.storages || !this.chunk.length) {
-      this.scheduleNextBackup()
-      return Promise.resolve()
-    }
-
-    const chunk = this.chunk.splice(0, this.chunk.length)
-
-    return Promise.all(
-      this.storages.map((storage) => {
-        if (exitBackup) {
-          console.log(`[server/exit] saving ${chunk.length} trades into ${storage.constructor.name}`)
-        }
-        return storage
-          .save(chunk, exitBackup)
-          .then(() => {
-            if (exitBackup) {
-              console.log(`[server/exit] performed backup of ${chunk.length} trades into ${storage.constructor.name}`)
-            }
-          })
-          .catch((err) => {
-            console.error(`[storage/${storage.name}] saving failure`, err)
-          })
-      })
-    )
-      .then(() => {
-        if (!exitBackup) {
-          this.scheduleNextBackup()
-        }
-      })
-      .catch((err) => {
-        console.error(`[server] something went wrong while backuping trades...`, err)
-      })
-  }
-
-  scheduleNextBackup() {
-    return
-
-    if (!this.storages) {
-      return
-    }
-
-    const now = new Date()
-    let delay = Math.ceil(now / this.options.backupInterval) * this.options.backupInterval - now - 20
-
-    if (delay < 1000) {
-      delay += this.options.backupInterval
-    }
-
-    this.backupTimeout = setTimeout(this.backupTrades.bind(this), delay)
-
-    return delay
-  }
-
   handleExchangesEvents() {
     this.exchanges.forEach((exchange) => {
       if (this.options.broadcast && this.options.broadcastAggr) {
@@ -331,13 +203,6 @@ class Server extends EventEmitter {
         }
 
         // this.dumpSymbolsByExchanges()
-      })
-
-      exchange.on('open', (event) => {
-        this.broadcastJson({
-          type: 'exchange_connected',
-          id: exchange.id,
-        })
       })
 
       exchange.on('disconnected', (pair, apiId) => {
@@ -378,293 +243,7 @@ class Server extends EventEmitter {
 
         // this.dumpConnections()
       })
-
-      exchange.on('err', (event) => {
-        this.broadcastJson({
-          type: 'exchange_error',
-          id: exchange.id,
-          message: event.message,
-        })
-      })
-
-      exchange.on('close', (event) => {
-        this.broadcastJson({
-          type: 'exchange_disconnected',
-          id: exchange.id,
-        })
-      })
     })
-  }
-
-  createWSServer() {
-    if (!this.options.broadcast) {
-      return
-    }
-
-    this.wss = new WebSocket.Server({
-      server: this.server,
-    })
-
-    this.wss.on('listening', () => {
-      //  console.log(`[server] websocket server listening at localhost:${this.options.port}`)
-    })
-
-    this.wss.on('connection', (ws, req) => {
-      const ip = getIp(req)
-      const pairs = parsePairsFromWsRequest(req)
-
-      if (pairs && pairs.length) {
-        ws.pairs = pairs
-      }
-
-      ws.pairs = pairs
-
-      const data = {
-        type: 'welcome',
-        supportedPairs: Object.values(this.connection).map((a) => a.exchange + ':' + a.pair),
-        timestamp: +new Date(),
-        exchanges: this.exchanges.map((exchange) => {
-          return {
-            id: exchange.id,
-            connected: exchange.apis.reduce((pairs, api) => {
-              pairs.concat(api._connected)
-              return pairs
-            }),
-          }
-        }),
-      }
-
-      // console.log(`[${ip}/ws/${ws.pairs.join('+')}] joined ${req.url} from ${req.headers['origin']}`)
-
-      this.emit('connections', this.wss.clients.size)
-
-      ws.send(JSON.stringify(data))
-
-      ws.on('message', (event) => {
-        const message = event.trim()
-
-        const pairs = message.length
-          ? message
-              .split('+')
-              .map((a) => a.trim())
-              .filter((a) => a.length)
-          : []
-
-        //  console.log(`[${ip}/ws] subscribe to ${pairs.join(' + ')}`)
-
-        ws.pairs = pairs
-      })
-
-      ws.on('close', (event) => {
-        let error = null
-
-        switch (event) {
-          case 1002:
-            error = 'Protocol Error'
-            break
-          case 1003:
-            error = 'Unsupported Data'
-            break
-          case 1007:
-            error = 'Invalid frame payload data'
-            break
-          case 1008:
-            error = 'Policy Violation'
-            break
-          case 1009:
-            error = 'Message too big'
-            break
-          case 1010:
-            error = 'Missing Extension'
-            break
-          case 1011:
-            error = 'Internal Error'
-            break
-          case 1012:
-            error = 'Service Restart'
-            break
-          case 1013:
-            error = 'Try Again Later'
-            break
-          case 1014:
-            error = 'Bad Gateway'
-            break
-          case 1015:
-            error = 'TLS Handshake'
-            break
-        }
-
-        if (error) {
-          console.log(`[${ip}] unusual close "${error}"`)
-        }
-
-        setTimeout(() => this.emit('connections', this.wss.clients.size), 100)
-      })
-    })
-  }
-
-  createHTTPServer() {
-    const app = express()
-
-    if (this.options.enableRateLimit) {
-      const limiter = rateLimit({
-        windowMs: this.options.rateLimitTimeWindow,
-        max: this.options.rateLimitMax,
-        handler: function (req, res) {
-          return res.status(429).json({
-            error: 'too many requests :v',
-          })
-        },
-      })
-
-      // otherwise ip are all the same
-      app.set('trust proxy', 1)
-
-      // apply to all requests
-      app.use(limiter)
-    }
-
-    app.all('/*', (req, res, next) => {
-      var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress
-
-      if (!req.headers['origin'] || !new RegExp(this.options.origin).test(req.headers['origin'])) {
-        console.debug(`[${ip}/BLOCKED] socket origin mismatch "${req.headers['origin']}"`)
-        setTimeout(() => {
-          return res.status(500).json({
-            error: 'ignored',
-          })
-        }, 5000 + Math.random() * 5000)
-      } else if (this.BANNED_IPS.indexOf(ip) !== -1) {
-        console.debug(`[${ip}/BANNED] at "${req.url}" from "${req.headers['origin']}"`)
-
-        setTimeout(() => {
-          return res.status(500).json({
-            error: 'ignored',
-          })
-        }, 5000 + Math.random() * 5000)
-      } else {
-        res.header('Access-Control-Allow-Origin', '*')
-        res.header('Access-Control-Allow-Headers', 'X-Requested-With')
-        next()
-      }
-    })
-
-    app.get('/', function (req, res) {
-      res.json({
-        message: 'hi',
-      })
-    })
-
-    app.get('/historical/:from/:to/:timeframe?/:markets([^/]*)?', (req, res) => {
-      const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress
-      let from = req.params.from
-      let to = req.params.to
-      let length
-      let timeframe = req.params.timeframe
-
-      let markets = req.params.markets || []
-
-      if (typeof markets === 'string') {
-        markets = markets
-          .split('+')
-          .map((a) => a.trim())
-          .filter((a) => a.length)
-      }
-
-      if (!this.options.api || !this.storages) {
-        return res.status(501).json({
-          error: 'no storage',
-        })
-      }
-
-      const storage = this.storages[0]
-
-      if (isNaN(from) || isNaN(to)) {
-        return res.status(400).json({
-          error: 'missing interval',
-        })
-      }
-
-      if (storage.format === 'point') {
-        timeframe = parseInt(timeframe) || 1000 * 60 // default to 1m
-
-        from = Math.floor(from / timeframe) * timeframe
-        to = Math.ceil(to / timeframe) * timeframe
-
-        length = (to - from) / timeframe
-
-        if (length > this.options.maxFetchLength) {
-          return res.status(400).json({
-            error: 'too many bars',
-          })
-        }
-      } else {
-        from = parseInt(from)
-        to = parseInt(to)
-      }
-
-      if (from > to) {
-        let _from = parseInt(from)
-        from = parseInt(to)
-        to = _from
-      }
-
-      const fetchStartAt = +new Date()
-
-      ;(storage
-        ? storage.fetch({
-            from,
-            to,
-            timeframe,
-            markets,
-          })
-        : Promise.resolve([])
-      )
-        .then((output) => {
-          if (!output) {
-            return res.status(404).json({
-              error: 'no results',
-            })
-          }
-
-          /*           if (length > 2000 || markets.length > 20) {
-            console.log(
-              `[${ip}/${req.get('origin')}] requesting ${getHms(to - from)} (${markets.length} markets, ${getHms(timeframe, true)} tf) -> ${
-                length ? length + ' bars into ' : ''
-              }${output.length} ${storage.format}s, took ${getHms(+new Date() - fetchStartAt)}`
-            )
-          } */
-
-          if (storage.format === 'trade') {
-            for (let i = 0; i < this.chunk.length; i++) {
-              if (this.chunk[i][1] <= from || this.chunk[i][1] >= to) {
-                continue
-              }
-
-              output.push(this.chunk[i])
-            }
-          }
-
-          return res.status(200).json({
-            format: storage.format,
-            results: output,
-          })
-        })
-        .catch((error) => {
-          return res.status(500).json({
-            error: error.message,
-          })
-        })
-    })
-
-    this.server = app.listen(this.options.port, () => {
-      /*       console.log(
-        `[server] http server listening at localhost:${this.options.port}`,
-        !this.options.api ? '(historical api is disabled)' : ''
-      ) */
-    })
-
-    this.app = app
   }
 
   dumpConnections(pingThreshold) {
@@ -748,8 +327,6 @@ class Server extends EventEmitter {
           return
         }
 
-        this.broadcastTrades(this.delayedForBroadcast)
-
         this.delayedForBroadcast = []
       }, this.options.broadcastDebounce || 1000)
     }
@@ -805,36 +382,6 @@ class Server extends EventEmitter {
         }
       }
     }
-  }
-
-  broadcastJson(data) {
-    if (!this.wss) {
-      return
-    }
-
-    this.wss.clients.forEach((client) => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify(data))
-      }
-    })
-  }
-
-  broadcastTrades(trades) {
-    if (!this.wss) {
-      return
-    }
-
-    const groups = groupTrades(trades, true, true)
-
-    this.wss.clients.forEach((client) => {
-      if (client.readyState === WebSocket.OPEN) {
-        for (let i = 0; i < client.pairs.length; i++) {
-          if (groups[client.pairs[i]]) {
-            client.send(JSON.stringify([client.pairs[i], groups[client.pairs[i]]]))
-          }
-        }
-      }
-    })
   }
 
   monitorExchangesActivity(startTime) {
@@ -896,61 +443,6 @@ class Server extends EventEmitter {
     if (dumpConnections) {
       this.dumpConnections()
     } */
-  }
-
-  listenBannedIps() {
-    const file = path.resolve(__dirname, '../banned.txt')
-
-    const watch = () => {
-      fs.watchFile(file, () => {
-        this.updateBannedIps()
-      })
-    }
-
-    try {
-      fs.accessSync(file, fs.constants.F_OK)
-
-      this.updateBannedIps().then((success) => {
-        if (success) {
-          watch()
-        }
-      })
-    } catch (error) {
-      const _checkForWatchInterval = setInterval(() => {
-        fs.access(file, fs.constants.F_OK, (err) => {
-          if (err) {
-            return
-          }
-
-          this.updateBannedIps().then((success) => {
-            if (success) {
-              clearInterval(_checkForWatchInterval)
-
-              watch()
-            }
-          })
-        })
-      }, 1000 * 10)
-    }
-  }
-
-  updateBannedIps() {
-    const file = path.resolve(__dirname, '../banned.txt')
-
-    return new Promise((resolve) => {
-      fs.readFile(file, 'utf8', (err, data) => {
-        if (err) {
-          return
-        }
-
-        this.BANNED_IPS = data
-          .split('\n')
-          .map((a) => a.trim())
-          .filter((a) => a.length)
-
-        resolve(true)
-      })
-    })
   }
 
   sendToDiscordClient(trade) {
@@ -1024,7 +516,6 @@ class Server extends EventEmitter {
 
     if (this.options.broadcast) {
       if (this.options.broadcastAggr && !this.options.broadcastDebounce) {
-        this.broadcastTrades(data)
       } else {
         Array.prototype.push.apply(this.delayedForBroadcast, data)
       }
@@ -1091,27 +582,8 @@ class Server extends EventEmitter {
     }
 
     if (this.aggregated.length) {
-      this.broadcastTrades(this.aggregated)
-
       this.aggregated.splice(0, this.aggregated.length)
     }
-  }
-
-  /**
-   * For debug only
-   */
-  dumpSymbolsByExchanges() {
-    const symbols = Object.keys(this.indexedProducts)
-
-    fs.writeFileSync(
-      './symbols',
-      symbols.reduce((output, symbol) => {
-        output += `${symbol} (${this.indexedProducts[symbol].exchanges.join(',')})\n`
-
-        return output
-      }, ''),
-      { encoding: 'utf8', flag: 'w' }
-    )
   }
 }
 
