@@ -1,6 +1,10 @@
 const EventEmitter = require('events')
 const { getIp, getHms, parsePairsFromWsRequest, groupTrades, ago } = require('./helper')
 
+function getIcon(side) {
+  side === 'sell' ? '🔻' : '🔝'
+}
+
 function isValidNumber(n) {
   return n && Number(n) && Number(n) % 1 === 0
 }
@@ -40,9 +44,9 @@ class Server extends EventEmitter {
     super()
 
     this.accumulatedTime = 10000
-    this.accumulatedLimit = 30000000
-    this.bigDealLimit = 7000000
-    this.channel = discord.channels.cache.find((channel) => channel.name === 'general')
+    this.accumulatedLimit = 15000000
+    this.bigDealLimit = 2000000
+    this.channel = discord.channels.cache.find((channel) => channel.name === 'bot')
     this.accumulatedBuyAmount = 0
     this.accumulatedSellAmount = 0
     this.timmerAccumulated
@@ -84,7 +88,6 @@ class Server extends EventEmitter {
     this.BANNED_IPS = []
 
     if (this.options.collect) {
-      console.log('L----O-----L')
       /*       console.log(
         `\n[server] collect is enabled`,
         this.options.broadcast && this.options.broadcastAggr
@@ -155,8 +158,7 @@ class Server extends EventEmitter {
     })
 
     this.channel.send(`
-
-      Crypto tracking bot iniciado. Valores por defecto:
+      🤖 Crypto tracking bot iniciado. Valores por defecto:
       tiempo-acumulado: ${msToSeconds(this.accumulatedTime)}
       acumulado: ${formatAmountToMillons(this.accumulatedLimit)}
       transaccion: ${formatAmountToMillons(this.bigDealLimit)}
@@ -450,12 +452,11 @@ class Server extends EventEmitter {
 
     if (this.isBigDeal(amount)) {
       this.channel.send(`
-
-        BIG ${trade.side}!
-        exchange: ${trade.exchange}
-        pair: ${trade.pair}
-        amount: ${formatAmountToMillons(amount)}
-      `)
+      ${getIcon(trade.side)} ${trade.side.toUpperCase()} ${getIcon(trade.side)}
+      exchange: ${trade.exchange}
+      par: ${trade.pair}
+      cantidad: ${formatAmountToMillons(amount)}
+    `)
     }
 
     if (trade.side === 'sell') {
@@ -469,18 +470,18 @@ class Server extends EventEmitter {
         if (this.isImportantAccumulated(this.accumulatedSellAmount)) {
           this.channel.send(`
 
-            BIG ACCUMULATED sell in ${msToSeconds(this.accumulatedTime)}!
-            pair: BTC/USD
-            amount: ${formatAmountToMillons(this.accumulatedSellAmount)}
+            🔻 Venta acumulada en ${msToSeconds(this.accumulatedTime)} 🔻
+            par: BTC/USD
+            cantidad: ${formatAmountToMillons(this.accumulatedSellAmount)}
           `)
         }
 
         if (this.isImportantAccumulated(this.accumulatedBuyAmount)) {
           this.channel.send(`
 
-            BIG ACCUMULATED buy in ${msToSeconds(this.accumulatedTime)}!
-            pair: BTC/USD
-            amount: ${formatAmountToMillons(this.accumulatedBuyAmount)}
+            🔝 Compra acumulada en ${msToSeconds(this.accumulatedTime)} 🔝
+            par: BTC/USD
+            cantidad: ${formatAmountToMillons(this.accumulatedBuyAmount)}
           `)
         }
 
