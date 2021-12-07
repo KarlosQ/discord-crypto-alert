@@ -1,0 +1,32 @@
+{
+  "debug": false,
+  "port": 3000,
+  "pairs": [
+    "BITFINEX:BTCUSD",
+    "BINANCE:btcusdt",
+    "OKEX:BTC-USDT",
+    "COINBASE:BTC-USD",
+    "POLONIEX:USDT_BTC",
+    "HUOBI:btcusdt",
+    "BITSTAMP:btcusd",
+    "BITFINEX:BTCF0:USTF0",
+    "OKEX:BTC-USD-SWAP",
+    "OKEX:BTC-USDT-SWAP",
+    "BINANCE_FUTURES:btcusdt",
+    "BINANCE_FUTURES:btcusd_perp",
+    "HUOBI:BTC-USD",
+    "DERIBIT:BTC-PERPETUAL",
+    "FTX:BTC-PERP",
+    "FTX:BTC/USD",
+    "FTX:BTC/USDT",
+    "BYBIT:BTCUSD",
+    "BYBIT:BTCUSDT"
+  ],
+  "backupInterval": 5000,
+  "collect": true,
+  "storage": [],
+  "origin": ".*",
+  "filesLocation": "./data",
+  "influxHost": "localhost",
+  "influxPort": 8086
+}

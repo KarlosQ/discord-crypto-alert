@@ -1,0 +1,11 @@
+node_modules/
+clients.txt
+banned.txt
+admin.txt
+/products
+/symbols
+data/*
+.DS_Store
+.vscode
+!**/.gitkeep
+*.config.json
