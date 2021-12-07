@@ -31,8 +31,8 @@ class Server extends EventEmitter {
     super()
 
     this.accumulatedTime = 10000
-    this.accumulatedLimit = 20000000
-    this.bigDealLimit = 5000000
+    this.accumulatedLimit = 30000000
+    this.bigDealLimit = 7000000
     this.channel = discord.channels.cache.find((channel) => channel.name === 'general')
     this.accumulatedBuyAmount = 0
     this.accumulatedSellAmount = 0
@@ -774,7 +774,7 @@ class Server extends EventEmitter {
       for (let pair of pairs) {
         promises.push(
           exchange.link(pair).catch((err) => {
-            console.debug(`[server/connectPairs/${exchange.id}] ${err}`)
+            //   console.debug(`[server/connectPairs/${exchange.id}] ${err}`)
 
             if (err instanceof Error) {
               console.error(err)
@@ -801,7 +801,7 @@ class Server extends EventEmitter {
         try {
           await exchange.unlink(pair)
         } catch (err) {
-          console.debug(`[server/disconnectPairs/${exchange.id}] ${err}`)
+          // console.debug(`[server/disconnectPairs/${exchange.id}] ${err}`)
 
           if (err instanceof Error) {
             console.error(err)
@@ -1056,7 +1056,7 @@ class Server extends EventEmitter {
 
       if (!this.connections[identifier]) {
         console.error(`UNKNOWN TRADE SOURCE`, trade)
-        console.info('This trade will be ignored.')
+        //  console.info('This trade will be ignored.')
         continue
       }
 
