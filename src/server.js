@@ -5,16 +5,20 @@ function getIcon(side) {
   return side === 'sell' ? '🔻' : '⬆️'
 }
 
+function translateSide(side) {
+  return side === 'sell' ? 'Venta' : 'Compra'
+}
+
 function isValidNumber(n) {
   return n && Number(n) && Number(n) % 1 === 0
 }
 
 function formatAmountToMillons(amount) {
-  return `${Math.round(amount / 10000) / 100} M`
+  return `${Math.round(amount / 10000) / 100} millones`
 }
 
 function msToSeconds(ms) {
-  return `${Math.round(ms / 1000)} s`
+  return `${Math.round(ms / 1000)} segundos`
 }
 
 function secondsToMs(seconds) {
@@ -136,7 +140,7 @@ class Server extends EventEmitter {
         const amount = commandWithNumber(msg)
         if (amount) {
           this.accumulatedLimit = amountToMillons(amount)
-          msg.reply(`Acumulado cambiado a ${amount} millon`)
+          msg.reply(`Acumulado cambiado a ${amount} millone/s`)
         }
       }
 
@@ -144,7 +148,7 @@ class Server extends EventEmitter {
         const amount = commandWithNumber(msg)
         if (amount) {
           this.accumulatedTime = secondsToMs(amount)
-          msg.reply(`tiempo acumulado cambiado a ${amount} segundo`)
+          msg.reply(`tiempo acumulado cambiado a ${amount} segundo/s`)
         }
       }
 
@@ -152,7 +156,7 @@ class Server extends EventEmitter {
         const amount = commandWithNumber(msg)
         if (amount) {
           this.bigDealLimit = amountToMillons(amount)
-          msg.reply(`transaccion importante cambiada a ${amount} millon`)
+          msg.reply(`transaccion importante cambiada a ${amount} millon/es`)
         }
       }
     })
@@ -452,7 +456,7 @@ class Server extends EventEmitter {
 
     if (this.isBigDeal(amount)) {
       this.channel.send(`
-      ${getIcon(trade.side)} ${trade.side.toUpperCase()} ${getIcon(trade.side)}
+      ${getIcon(trade.side)} ${translateSide(trade.side)} significativa ${getIcon(trade.side)}
       exchange: ${trade.exchange}
       par: ${trade.pair}
       cantidad: ${formatAmountToMillons(amount)}
@@ -470,7 +474,7 @@ class Server extends EventEmitter {
         if (this.isImportantAccumulated(this.accumulatedSellAmount)) {
           this.channel.send(`
 
-            🔻 Venta acumulada en ${msToSeconds(this.accumulatedTime)} 🔻
+            🔻 Venta acumulada significativa en los ultimos ${msToSeconds(this.accumulatedTime)} 🔻
             par: BTC/USD
             cantidad: ${formatAmountToMillons(this.accumulatedSellAmount)}
           `)
@@ -479,7 +483,7 @@ class Server extends EventEmitter {
         if (this.isImportantAccumulated(this.accumulatedBuyAmount)) {
           this.channel.send(`
 
-            ⬆️ Compra acumulada en ${msToSeconds(this.accumulatedTime)} ⬆️
+            ⬆️ Compra acumulada significativa en ultimos ${msToSeconds(this.accumulatedTime)} ⬆️
             par: BTC/USD
             cantidad: ${formatAmountToMillons(this.accumulatedBuyAmount)}
           `)
