@@ -37,7 +37,6 @@ class Server extends EventEmitter {
     this.accumulatedBuyAmount = 0
     this.accumulatedSellAmount = 0
     this.timmerAccumulated
-    this.discord = discord
     this.options = options
     this.exchanges = exchanges || []
     this.indexedProducts = {}
@@ -76,7 +75,7 @@ class Server extends EventEmitter {
     this.BANNED_IPS = []
 
     if (this.options.collect) {
-      console.log(
+      /*       console.log(
         `\n[server] collect is enabled`,
         this.options.broadcast && this.options.broadcastAggr
           ? '\n\twill aggregate every trades that came on same ms (impact only broadcast)'
@@ -87,7 +86,7 @@ class Server extends EventEmitter {
           ? `will broadcast trades instantly`
           : ''
       )
-      console.log(`\tconnect to -> ${this.exchanges.map((a) => a.id).join(', ')}`)
+      console.log(`\tconnect to -> ${this.exchanges.map((a) => a.id).join(', ')}`) */
 
       this.handleExchangesEvents()
       this.connectExchanges()
@@ -101,9 +100,9 @@ class Server extends EventEmitter {
         if (this.storages) {
           const delay = this.scheduleNextBackup()
 
-          console.log(
+          /*        console.log(
             `[server] scheduling first save to ${this.storages.map((storage) => storage.constructor.name)} in ${getHms(delay)}...`
-          )
+          ) */
         }
       }
 
@@ -138,7 +137,8 @@ class Server extends EventEmitter {
 
       if (msg.content === '!help') {
         msg.reply(`
-          Commands:
+
+          Comandos:
           - !acumulado {millones}
           - !tiempo-acumulado {segundos}
           - !transaccion {millones}
@@ -195,6 +195,14 @@ class Server extends EventEmitter {
         }
       }
     })
+
+    this.channel.send(`
+    
+      Crypto tracking bot iniciado. Valores por defecto:
+      tiempo-acumulado: ${msToSeconds(this.accumulatedTime)}
+      acumulado: ${formatAmountToMillons(this.accumulatedLimit)}
+      transaccion: ${formatAmountToMillons(this.bigDealLimit)}
+  `)
   }
 
   isBigDeal(amount) {
@@ -344,7 +352,7 @@ class Server extends EventEmitter {
           return
         }
 
-        console.log(`[server] deleted connection ${id}`)
+        // console.log(`[server] deleted connection ${id}`)
 
         delete this.connections[id]
 
@@ -359,7 +367,7 @@ class Server extends EventEmitter {
           return
         }
 
-        console.log(`[server] registered connection ${id}`)
+        //   console.log(`[server] registered connection ${id}`)
 
         const now = +new Date()
 
@@ -402,7 +410,7 @@ class Server extends EventEmitter {
     })
 
     this.wss.on('listening', () => {
-      console.log(`[server] websocket server listening at localhost:${this.options.port}`)
+      //  console.log(`[server] websocket server listening at localhost:${this.options.port}`)
     })
 
     this.wss.on('connection', (ws, req) => {
@@ -430,7 +438,7 @@ class Server extends EventEmitter {
         }),
       }
 
-      console.log(`[${ip}/ws/${ws.pairs.join('+')}] joined ${req.url} from ${req.headers['origin']}`)
+      // console.log(`[${ip}/ws/${ws.pairs.join('+')}] joined ${req.url} from ${req.headers['origin']}`)
 
       this.emit('connections', this.wss.clients.size)
 
@@ -446,7 +454,7 @@ class Server extends EventEmitter {
               .filter((a) => a.length)
           : []
 
-        console.log(`[${ip}/ws] subscribe to ${pairs.join(' + ')}`)
+        //  console.log(`[${ip}/ws] subscribe to ${pairs.join(' + ')}`)
 
         ws.pairs = pairs
       })
@@ -623,13 +631,13 @@ class Server extends EventEmitter {
             })
           }
 
-          if (length > 2000 || markets.length > 20) {
+          /*           if (length > 2000 || markets.length > 20) {
             console.log(
               `[${ip}/${req.get('origin')}] requesting ${getHms(to - from)} (${markets.length} markets, ${getHms(timeframe, true)} tf) -> ${
                 length ? length + ' bars into ' : ''
               }${output.length} ${storage.format}s, took ${getHms(+new Date() - fetchStartAt)}`
             )
-          }
+          } */
 
           if (storage.format === 'trade') {
             for (let i = 0; i < this.chunk.length; i++) {
@@ -654,10 +662,10 @@ class Server extends EventEmitter {
     })
 
     this.server = app.listen(this.options.port, () => {
-      console.log(
+      /*       console.log(
         `[server] http server listening at localhost:${this.options.port}`,
         !this.options.api ? '(historical api is disabled)' : ''
-      )
+      ) */
     })
 
     this.app = app
@@ -734,10 +742,10 @@ class Server extends EventEmitter {
       })
     )
 
-    exchangesProductsResolver.then(() => {
+    /*     exchangesProductsResolver.then(() => {
       this.dumpConnections()
     })
-
+ */
     if (this.options.broadcast && this.options.broadcastDebounce && !this.options.broadcastAggr) {
       this._broadcastDelayedTradesInterval = setInterval(() => {
         if (!this.delayedForBroadcast.length) {
@@ -758,7 +766,7 @@ class Server extends EventEmitter {
    * @memberof Server
    */
   async connectPairs(pairs) {
-    console.log(`[server] connect to ${pairs.join(',')}`)
+    //    console.log(`[server] connect to ${pairs.join(',')}`)
 
     const promises = []
 
@@ -786,7 +794,7 @@ class Server extends EventEmitter {
    * @memberof Server
    */
   async disconnectPairs(pairs) {
-    console.log(`[server] disconnect from ${pairs.join(',')}`)
+    // console.log(`[server] disconnect from ${pairs.join(',')}`)
 
     for (let exchange of this.exchanges) {
       for (let pair of pairs) {
@@ -884,14 +892,14 @@ class Server extends EventEmitter {
       }
     }
 
-    const dumpConnections =
+    /*     const dumpConnections =
       (Math.floor((now - (startTime + this.options.monitorInterval)) / this.options.monitorInterval) * this.options.monitorInterval) %
         (this.options.monitorInterval * 60) ===
       0
 
     if (dumpConnections) {
       this.dumpConnections()
-    }
+    } */
   }
 
   listenBannedIps() {
@@ -954,6 +962,7 @@ class Server extends EventEmitter {
 
     if (this.isBigDeal(amount)) {
       this.channel.send(`
+
         BIG ${trade.side}!
         exchange: ${trade.exchange}
         pair: ${trade.pair}
@@ -971,6 +980,7 @@ class Server extends EventEmitter {
       this.timmerAccumulated = setInterval(() => {
         if (this.isImportantAccumulated(this.accumulatedSellAmount)) {
           this.channel.send(`
+
             BIG ACCUMULATED sell in ${msToSeconds(this.accumulatedTime)}!
             pair: BTC/USD
             amount: ${formatAmountToMillons(this.accumulatedSellAmount)}
@@ -979,6 +989,7 @@ class Server extends EventEmitter {
 
         if (this.isImportantAccumulated(this.accumulatedBuyAmount)) {
           this.channel.send(`
+
             BIG ACCUMULATED buy in ${msToSeconds(this.accumulatedTime)}!
             pair: BTC/USD
             amount: ${formatAmountToMillons(this.accumulatedBuyAmount)}
