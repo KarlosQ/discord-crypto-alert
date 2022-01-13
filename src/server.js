@@ -14,7 +14,7 @@ function isValidNumber(n) {
 }
 
 function formatAmountToMillons(amount) {
-  return `${Math.round(amount / 10000) / 100} millon/es`
+  return `${Math.round(amount / 10000) / 100} millones`
 }
 
 function msToSeconds(ms) {
@@ -140,7 +140,7 @@ class Server extends EventEmitter {
         const amount = commandWithNumber(msg)
         if (amount) {
           this.accumulatedLimit = amountToMillons(amount)
-          msg.reply(`Acumulado cambiado a ${amount} millon/es`)
+          msg.reply(`Acumulado cambiado a ${amount} millones`)
         }
       }
 
@@ -148,7 +148,7 @@ class Server extends EventEmitter {
         const amount = commandWithNumber(msg)
         if (amount) {
           this.accumulatedTime = secondsToMs(amount)
-          msg.reply(`tiempo acumulado cambiado a ${amount} segundo/s`)
+          msg.reply(`tiempo acumulado cambiado a ${amount} segundos`)
         }
       }
 
@@ -156,7 +156,7 @@ class Server extends EventEmitter {
         const amount = commandWithNumber(msg)
         if (amount) {
           this.bigDealLimit = amountToMillons(amount)
-          msg.reply(`transaccion importante cambiada a ${amount} millon/es`)
+          msg.reply(`transaccion importante cambiada a ${amount} millones`)
         }
       }
     })
